@@ -13,7 +13,7 @@ fs.readdir(pathToDir, { withFileTypes: true }, (err, files) => {
 
         else if(stats.isFile()) {
           let result = '';
-          result += `${path.parse(file.name).name} - ${path.parse(file.name).ext.slice(1)} - ${stats.size/1024}kb`;
+          result += `${path.parse(file.name).name} - ${path.parse(file.name).ext.slice(1)} - ${((stats.size)/1024).toFixed(1)}kb`;
           console.log(result);
         }
       });
