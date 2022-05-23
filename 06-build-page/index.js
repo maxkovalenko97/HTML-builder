@@ -1,128 +1,81 @@
-const fs = require('fs');
+const { deepStrictEqual } = require('assert');
+const { writeFile } = require('fs');
+const fs = require('fs/promises');
 const path = require('path');
 
-//create project-dist
-fs.mkdir(path.join(__dirname, 'project-dist'), {recursive: true}, err => {
-    if(err) throw err;
-})
+createBundle();
 
-const template = path.join(__dirname, 'template.html');
-const index = path.join(__dirname, 'project-dist', 'index.html');
-const components = path.join(__dirname, 'components');
-
-
-fs.readFile(template, 'utf-8', (err, data) => {
-    if (err) throw err;
-    toComponents(data);
-});
-
-
-function toComponents(cont) {
-    fs.readdir(components, (err, files) => {
-        if(err) console.log(err);
-
-        files.forEach(file => {
-            let fileName = path.parse(file).name;
-            let re = `{{${fileName}}}`;
-
-            fs.readFile(path.join(components, file), 'utf-8', (err, data) => {
-                if (err) throw err;
-                cont = cont.replace(re, data);
-
-                fs.writeFile(index, cont, (err) => {
-                    if (err) throw err;
-                    console.log(`Add ${fileName}`);
-                });
-            })
-        })
-    })
-}
-
-
-
-
-
-
-
-
-
-
-
-///////////////////////////////////////
-const pathToStyles = path.join(__dirname,'styles');
-
-fs.readdir(pathToStyles,{ withFileTypes: true }, (err, files) => {
-    if(err) console.log(err);
-
-    else {
-        files.forEach(file => {
-            path.extname(file.name) === '.css' ? addToBundle(file.name) : true;
-        });
+async function createBundle() {
+    try {
+        await createDirectory(path.join(__dirname, 'project-dist'));
+        await insertComponents();
+        await createCssFile();
+        await copyDirectory()
     }
-})
+    catch(err) {
+        console.log(err);
+    }
+    
+}
 
-function addToBundle(file){
+//create project-dist
+async function createDirectory (path) {
+    await fs.mkdir(path, {recursive: true});
+};
+
+async function insertComponents() {
+    const pathToComponents = path.join(__dirname, 'components');
+
+    let templateContent = await fs.readFile(path.join(__dirname, 'template.html'), 'utf-8');
+    const componentsFilesNames = await fs.readdir(pathToComponents);
+
+    for(let file of componentsFilesNames) {
+        const re = `{{${path.parse(file).name}}}`;
+        const fileContent = await fs.readFile(path.join(pathToComponents, file), 'utf-8');
+        templateContent = templateContent.replace(re, fileContent);
+    }
+
+    await fs.writeFile(path.join(__dirname, 'project-dist', 'index.html'), templateContent);
+};
+
+async function createCssFile() {
+    const pathToStyles = path.join(__dirname,'styles');
+    const filesOfStyles = await fs.readdir(pathToStyles, {withFileTypes: true});
     const bundle = path.join(__dirname,'project-dist','style.css');
-    const currentFile = path.join(__dirname, 'styles', file);
+    
+    for(let file of filesOfStyles) {
+        if(path.extname(file.name) === '.css') {
+            await addToBundle(file.name);
+        } 
+    }
 
-    fs.readFile(currentFile, 'utf8', function(err, data){
-        fs.appendFile(bundle, data, (err) => {
-            if (err) throw err;
-        })
-    });
+    async function addToBundle (file) {
+        const currentFile = path.join(__dirname, 'styles', file);
+        const dataFile = await fs.readFile(currentFile, 'utf-8');
+        await fs.appendFile(bundle, dataFile);
+    }
 }
 
 
+async function copyDirectory() {
+    const copyFrom = path.join(__dirname, 'assets');
+    const copyTo = path.join(__dirname, 'project-dist', 'assets');
 
+    deepCopy(copyFrom, copyTo);
+    async function deepCopy(from, to){
+        const contentDir = await fs.readdir(from);
 
-
-
-
-
-
-
-
-
-
-
-
-
-///////////////////////////////////////////
-
-function makeDirectory(way) {
-    fs.mkdir(way, { recursive: true }, err => {
-        if (err) throw err;
-    });
+        for(let obj of contentDir) {
+            let stat1 = await fs.stat(path.join(from, obj));
+            if (stat1.isDirectory()) {
+                await createDirectory(to + '/' + obj);
+                await deepCopy(from + '/' + obj, to + '/' + obj); ///////////////
+            } else {
+                await fs.copyFile(path.join(from, obj), path.join(to, obj));
+            }
+        }
+    }
 }
-
-
-const copyFrom = path.join(__dirname, 'assets');
-const copyTo = path.join(__dirname, 'project-dist', 'assets');
-
-function deepCopy(way, to){
-    fs.readdir(way, (err, files) => {
-       if(err) throw err;
- 
-       for (let file of files){
-          fs.stat(path.join(way,file), (errStat, status) => {   
-             if(errStat) throw errStat;
- 
-             if(status.isDirectory()){
-                makeDirectory(to + '/' + file);
-                deepCopy(way + '/' + file, to + '/' + file);
-                
-             }else{
-                fs.copyFile(path.join(way,file), path.join(to, file), (err) => {
-                    if (err) throw err;
-                });
-             }
-          });
-       }
-    });
- }
-
- deepCopy(copyFrom, copyTo);
-
 
 
 
