@@ -4,8 +4,9 @@ const path = require('path');
 createCssFile(); 
 
 async function createCssFile() {
-  const pathToStyles = path.join(__dirname,'styles');
-  const filesOfStyles = await fs.readdir(pathToStyles, {withFileTypes: true});
+  await fs.rm(path.join(__dirname,'project-dist','bundle.css'), { recursive: true, force: true});
+
+  const filesOfStyles = await fs.readdir(path.join(__dirname,'styles'), {withFileTypes: true});
   const bundle = path.join(__dirname,'project-dist','bundle.css');
     
   for(let file of filesOfStyles) {
